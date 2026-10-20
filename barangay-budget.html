@@ -1,0 +1,673 @@
+<title>Barangay Budget</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@500;600;700;800&display=swap">
+<style>
+/* Layout: sticky navy HUD on top, then a two-column board (town scene, controls, hazards, log | five department funds). Single column on phones. */
+:root {
+  --bg: #EAF1F4;
+  --surface: #FFFFFF;
+  --surface2: #E1EBF0;
+  --ink: #12303F;
+  --muted: #566F7D;
+  --line: #CBD9E0;
+  --navy: #17415E;
+  --on-navy: #FFFFFF;
+  --accent: #FFD34D;
+  --on-accent: #17415E;
+  --good: #1B8A5A;
+  --warn: #B86E00;
+  --bad: #C4372A;
+  --info: #2468B0;
+  --haz-flood: #2A78C8;
+  --haz-typhoon: #5B54C4;
+  --haz-fire: #D9501E;
+  --haz-quake: #8A6430;
+  --font-display: 'Baloo 2', 'Arial Rounded MT Bold', 'Trebuchet MS', Arial, sans-serif;
+  --font-body: 'Nunito', 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0C1B25; --surface: #142A38; --surface2: #1C3647; --ink: #E7F1F6; --muted: #93AEBC;
+    --line: #29465A; --navy: #08151E; --on-navy: #FFFFFF; --accent: #FFD34D; --on-accent: #17415E;
+    --good: #43C98A; --warn: #F0A63A; --bad: #FF7A6B; --info: #6DB3F2;
+    --haz-flood: #3C8FE0; --haz-typhoon: #7A74E0; --haz-fire: #F0662F; --haz-quake: #A97C42;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0C1B25; --surface: #142A38; --surface2: #1C3647; --ink: #E7F1F6; --muted: #93AEBC;
+  --line: #29465A; --navy: #08151E; --on-navy: #FFFFFF; --accent: #FFD34D; --on-accent: #17415E;
+  --good: #43C98A; --warn: #F0A63A; --bad: #FF7A6B; --info: #6DB3F2;
+  --haz-flood: #3C8FE0; --haz-typhoon: #7A74E0; --haz-fire: #F0662F; --haz-quake: #A97C42;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.45; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--navy); }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.num { font-variant-numeric: tabular-nums; }
+
+.wrap { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+/* HUD */
+.hud { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--navy); color: var(--on-navy); box-shadow: 0 2px 10px rgba(0,0,0,.18); }
+.hud-in { padding-block: 8px 10px; display: grid; gap: 6px; }
+.brand { display: flex; align-items: baseline; gap: 10px; font-family: var(--font-display); }
+.brand b { font-size: 20px; font-weight: 800; letter-spacing: .2px; }
+.brand span { font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.stat { min-width: 0; }
+.stat .k { font-size: 10.5px; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase; color: #A9C4D3; }
+.stat .v { font-family: var(--font-display); font-weight: 800; font-size: 19px; line-height: 1.15; white-space: nowrap; }
+.stat .s { font-size: 11.5px; font-weight: 700; color: #A9C4D3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stat .s.up { color: #7FE0AE; }
+.stat .s.dn { color: #FF9C8F; }
+.spark { display: block; width: 100%; height: 14px; margin-top: 2px; }
+
+/* Board */
+.main { padding-block: 16px 40px; display: grid; gap: 16px; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: start; }
+.col { display: grid; gap: 14px; min-width: 0; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
+.panel h2 { margin: 0; font-family: var(--font-display); font-size: 17px; font-weight: 800; }
+.panel .hd { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 12px 14px 0; }
+.panel .hd small { color: var(--muted); font-size: 12.5px; font-weight: 600; }
+
+.scene-card { overflow: hidden; }
+#scene { display: block; width: 100%; height: auto; }
+.alerts { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--line); min-height: 54px; align-items: center; background: var(--surface); }
+.calm { color: var(--muted); font-weight: 700; font-size: 14px; }
+.chip { display: inline-flex; align-items: center; gap: 7px; padding: 5px 11px 5px 8px; border-radius: 999px; font-weight: 800; font-size: 13px; color: #fff; background: var(--haz); }
+.chip svg { width: 17px; height: 17px; flex: none; }
+.chip.watch { background: transparent; color: var(--warn); border: 2px dashed var(--warn); }
+.chip small { font-weight: 700; opacity: .92; font-size: 12px; }
+
+.controls { display: grid; gap: 10px; padding: 12px 14px 14px; }
+.ctl-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.btn { appearance: none; border: 0; cursor: pointer; border-radius: 10px; padding: 9px 16px; font-family: var(--font-display); font-weight: 800; font-size: 16px; background: var(--accent); color: var(--on-accent); min-height: 42px; }
+.btn:hover:not(:disabled) { filter: brightness(1.05); }
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.btn.ghost { background: var(--surface2); color: var(--ink); }
+.seg { display: inline-flex; background: var(--surface2); border-radius: 10px; padding: 3px; gap: 2px; }
+.seg button { appearance: none; border: 0; background: transparent; cursor: pointer; padding: 7px 12px; border-radius: 8px; font-weight: 800; font-size: 14px; color: var(--muted); min-height: 36px; }
+.seg button[aria-pressed="true"] { background: var(--navy); color: #fff; }
+.timeline { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.timeline .m { position: relative; height: 8px; background: var(--surface2); border-radius: 4px; overflow: hidden; }
+.timeline .m i { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--navy); }
+.tl-labels { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; font-size: 11px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-top: -4px; }
+
+.risks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 12px 14px 14px; }
+.risk { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: grid; gap: 4px; }
+.risk.on { border-color: var(--haz); box-shadow: 0 0 0 2px var(--haz) inset; }
+.risk .t { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 800; }
+.risk .t span { display: inline-flex; align-items: center; gap: 6px; }
+.risk .t svg { width: 18px; height: 18px; color: var(--haz); }
+.risk .p { font-family: var(--font-display); font-size: 20px; font-weight: 800; color: var(--haz); }
+.risk .bar { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+.risk .bar i { display: block; height: 100%; background: var(--haz); }
+.risk .d { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+
+.log { list-style: none; margin: 0; padding: 10px 14px 14px; display: grid; gap: 6px; max-height: 230px; overflow-y: auto; }
+.log li { display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 8px; font-size: 14px; }
+.log li b { color: var(--muted); font-size: 12px; letter-spacing: .8px; text-transform: uppercase; padding-top: 2px; }
+.log li.bad span { color: var(--bad); font-weight: 800; }
+.log li.warn span { color: var(--warn); font-weight: 800; }
+.log li.good span { color: var(--good); font-weight: 800; }
+
+/* Departments */
+.depts { display: grid; gap: 12px; }
+.dept { padding: 14px; display: grid; gap: 9px; }
+.dept .row1 { display: flex; align-items: center; gap: 10px; }
+.dept .ico { width: 38px; height: 38px; border-radius: 10px; background: var(--surface2); display: grid; place-items: center; color: var(--navy); flex: none; }
+:root[data-theme="dark"] .dept .ico { color: var(--accent); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .dept .ico { color: var(--accent); } }
+.dept .ico svg { width: 22px; height: 22px; }
+.dept .nm { min-width: 0; flex: 1; }
+.dept .nm b { display: block; font-family: var(--font-display); font-size: 17px; font-weight: 800; line-height: 1.15; }
+.dept .nm small { color: var(--muted); font-weight: 600; font-size: 12.5px; }
+.tag { font-size: 11.5px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; border: 2px solid currentColor; flex: none; }
+.tag.crit { color: var(--bad); } .tag.low { color: var(--warn); } .tag.ok { color: var(--info); } .tag.strong { color: var(--good); }
+.meter { height: 14px; background: var(--surface2); border-radius: 7px; position: relative; overflow: hidden; }
+.meter .fill { position: absolute; inset: 0 auto 0 0; background: var(--c, var(--good)); border-radius: 7px 0 0 7px; transition: width .35s ease, background-color .35s; }
+.meter .queue { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(45deg, var(--c, var(--good)) 0 5px, transparent 5px 10px); opacity: .45; transition: left .35s ease, width .35s ease; }
+.dept .nums { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; font-weight: 700; flex-wrap: wrap; }
+.dept .nums .dec { color: var(--muted); font-weight: 600; }
+.dept .nums .inc { color: var(--good); }
+.dept .eff { font-size: 13.5px; font-weight: 700; color: var(--ink); background: var(--surface2); border-radius: 8px; padding: 6px 10px; }
+.dept .buy { display: flex; gap: 8px; }
+.dept .buy .btn { flex: 1; font-size: 15px; padding: 7px 10px; min-height: 40px; }
+.note { font-size: 12.5px; color: var(--muted); font-weight: 600; padding: 0 2px; }
+
+/* Scene effects */
+#flood { transform: translateY(130px); transition: transform 1.6s ease; }
+.on-flood #flood { transform: translateY(0); }
+#waves { animation: waves 3s linear infinite; }
+#dark { opacity: 0; transition: opacity 1s; }
+.on-typhoon #dark { opacity: .5; }
+#rain { opacity: 0; transition: opacity .6s; }
+.on-typhoon #rain { opacity: 1; }
+#rain g { animation: rain .55s linear infinite; }
+#fireFx { opacity: 0; transition: opacity .6s; }
+.on-fire #fireFx { opacity: 1; }
+.flame { transform-box: fill-box; transform-origin: 50% 100%; animation: flick .45s ease-in-out infinite alternate; }
+.flame.b { animation-duration: .6s; animation-delay: -.2s; }
+.smoke { animation: smoke 3s ease-in infinite; }
+#cracks { opacity: 0; transition: opacity .3s; }
+.on-quake #cracks { opacity: 1; }
+.on-quake #town { animation: shake .22s linear infinite; }
+.clouds { animation: drift 40s linear infinite alternate; }
+@keyframes waves { to { transform: translateX(-100px); } }
+@keyframes rain { to { transform: translate(-60px, 150px); } }
+@keyframes flick { from { transform: scale(1, .85) skewX(-3deg); } to { transform: scale(1.08, 1.12) skewX(3deg); } }
+@keyframes smoke { from { transform: translateY(0); opacity: .55; } to { transform: translateY(-40px); opacity: 0; } }
+@keyframes shake { 0% { transform: translate(0,0); } 25% { transform: translate(-3px,1px); } 50% { transform: translate(2px,-1px); } 75% { transform: translate(-2px,-1px); } 100% { transform: translate(3px,1px); } }
+@keyframes drift { to { transform: translateX(50px); } }
+@media (prefers-reduced-motion: reduce) {
+  .clouds, #waves, #rain g, .flame, .smoke, .on-quake #town { animation: none; }
+  #flood, #dark, #rain, #fireFx { transition: none; }
+}
+
+/* Modals */
+.modal { position: fixed; inset: 0; z-index: 40; background: rgba(8, 21, 30, .74); display: grid; place-items: center; padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); overflow-y: auto; }
+.modal[hidden] { display: none; }
+.card { width: 100%; max-width: 540px; background: var(--surface); border-radius: 18px; padding: 24px; display: grid; gap: 14px; border: 1px solid var(--line); }
+.card .eyebrow { font-size: 12px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
+.card h1 { margin: 0; font-family: var(--font-display); font-size: 34px; line-height: 1.05; font-weight: 800; text-wrap: balance; }
+.card p { margin: 0; }
+.card ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.card li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 8px; font-weight: 600; }
+.card li i { width: 12px; height: 12px; border-radius: 3px; background: var(--accent); margin-top: 6px; }
+.result { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.result div { background: var(--surface2); border-radius: 10px; padding: 10px 12px; }
+.result .k { font-size: 11px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); }
+.result .v { font-family: var(--font-display); font-weight: 800; font-size: 24px; line-height: 1.15; }
+.lesson { border-left: 4px solid var(--accent); padding: 4px 0 4px 12px; font-weight: 600; }
+
+@media (max-width: 900px) {
+  .main { grid-template-columns: minmax(0, 1fr); }
+  .col.right { order: -1; }
+  .col.left { order: 0; }
+  #scene-col { order: -2; }
+}
+@media (max-width: 560px) {
+  .brand { display: none; }
+  .hud-in { padding-block: 7px 8px; }
+  .stat .v { font-size: 16px; }
+  .stat .k { font-size: 9.5px; letter-spacing: 1px; }
+  .stat .s { font-size: 10.5px; }
+  .spark { display: none; }
+  .risks { grid-template-columns: minmax(0, 1fr); }
+  .card { padding: 20px; }
+  .card h1 { font-size: 28px; }
+}
+</style>
+
+<div class="hud">
+  <div class="wrap hud-in">
+    <div class="brand"><b>Barangay Budget</b><span>CivicQuest</span></div>
+    <div class="stats">
+      <div class="stat"><div class="k">Day</div><div class="v num" id="sDay">0 / 120</div><div class="s" id="sMonth">Month 1</div></div>
+      <div class="stat"><div class="k">Population</div><div class="v num" id="sPop">3,000</div><div class="s num" id="sPopD">start</div><svg class="spark" id="spark" viewBox="0 0 100 14" preserveAspectRatio="none" aria-hidden="true"><polyline id="sparkLine" points="" fill="none" stroke="#FFD34D" stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg></div>
+      <div class="stat"><div class="k">Treasury</div><div class="v num" id="sCash">₱120,000</div><div class="s num up" id="sInc">+₱0/day</div></div>
+      <div class="stat"><div class="k">Lives lost</div><div class="v num" id="sLost">0</div><div class="s num" id="sLostD">no deaths yet</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap main">
+  <div class="col left" id="scene-col">
+    <div class="panel scene-card">
+      <svg id="scene" viewBox="0 0 800 280" role="img" aria-label="A Philippine barangay with a school, health center, houses, fire station and barangay hall">
+        <defs>
+          <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4FB3D9"/><stop offset="1" stop-color="#CDEFF5"/></linearGradient>
+          <linearGradient id="water" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4DA6E0" stop-opacity=".88"/><stop offset="1" stop-color="#245F9E" stop-opacity=".95"/></linearGradient>
+          <clipPath id="clip"><rect width="800" height="280"/></clipPath>
+        </defs>
+        <g clip-path="url(#clip)">
+          <rect width="800" height="280" fill="url(#sky)"/>
+          <circle cx="86" cy="52" r="34" fill="#FFE27A" opacity=".28"/><circle cx="86" cy="52" r="24" fill="#FFE27A"/>
+          <g class="clouds" fill="#fff" opacity=".9"><ellipse cx="300" cy="46" rx="44" ry="11"/><ellipse cx="330" cy="38" rx="28" ry="11"/><ellipse cx="620" cy="34" rx="38" ry="10"/><ellipse cx="560" cy="62" rx="30" ry="8"/></g>
+          <path d="M0 196 Q130 140 270 190 T540 176 T800 188 V280 H0Z" fill="#86CBA0"/>
+          <rect y="212" width="800" height="68" fill="#4FA36B"/><rect y="212" width="800" height="5" fill="#3E8C59"/>
+          <g id="town">
+            <!-- school -->
+            <rect x="24" y="150" width="100" height="62" fill="#F4D58D"/><polygon points="56,124 74,104 92,124" fill="#D8503F"/><rect x="58" y="124" width="32" height="26" fill="#E9B949"/><circle cx="74" cy="136" r="5" fill="#fff"/>
+            <rect x="34" y="164" width="18" height="16" fill="#9ED7EA" stroke="#fff" stroke-width="2"/><rect x="96" y="164" width="18" height="16" fill="#9ED7EA" stroke="#fff" stroke-width="2"/><rect x="64" y="182" width="20" height="30" fill="#7A4B2A"/>
+            <!-- health center -->
+            <rect x="152" y="160" width="100" height="52" fill="#FFFFFF"/><rect x="152" y="152" width="100" height="9" fill="#2FA38A"/>
+            <rect x="192" y="124" width="20" height="26" fill="#fff"/><rect x="199" y="128" width="6" height="18" fill="#D8503F"/><rect x="193" y="134" width="18" height="6" fill="#D8503F"/>
+            <rect x="162" y="172" width="18" height="16" fill="#9ED7EA"/><rect x="224" y="172" width="18" height="16" fill="#9ED7EA"/><rect x="190" y="184" width="24" height="28" fill="#2FA38A"/>
+            <!-- houses -->
+            <rect x="282" y="172" width="68" height="40" fill="#F6E7BE"/><polygon points="274,174 316,140 358,174" fill="#A55B3A"/><rect x="292" y="184" width="14" height="14" fill="#9ED7EA"/><rect x="322" y="186" width="16" height="26" fill="#7A4B2A"/>
+            <rect x="374" y="180" width="58" height="32" fill="#CFE8F5"/><polygon points="368,182 403,154 438,182" fill="#6B7A8F"/><rect x="384" y="190" width="12" height="12" fill="#fff"/><rect x="408" y="192" width="14" height="20" fill="#7A4B2A"/>
+            <!-- fire station -->
+            <rect x="468" y="152" width="112" height="60" fill="#E5604E"/><rect x="462" y="144" width="124" height="10" fill="#8F2D22"/>
+            <rect x="486" y="172" width="42" height="40" fill="#FFF3D6"/><path d="M486 182H528M486 192H528M486 202H528" stroke="#E5604E" stroke-width="2"/>
+            <rect x="548" y="118" width="24" height="26" fill="#E5604E"/><circle cx="560" cy="130" r="5" fill="#FFD34D"/><rect x="542" y="112" width="36" height="7" fill="#8F2D22"/>
+            <!-- barangay hall -->
+            <rect x="616" y="150" width="140" height="62" fill="#F6E7BE"/><polygon points="608,152 686,112 764,152" fill="#D8503F"/>
+            <rect x="685" y="80" width="3" height="34" fill="#6B4A2B"/><polygon points="688,80 712,87 688,94" fill="#F5B72D"/>
+            <rect x="626" y="164" width="22" height="20" fill="#9ED7EA" stroke="#fff" stroke-width="3"/><rect x="724" y="164" width="22" height="20" fill="#9ED7EA" stroke="#fff" stroke-width="3"/>
+            <rect x="670" y="170" width="32" height="42" fill="#7A4B2A"/><rect x="664" y="162" width="44" height="7" fill="#fff"/>
+            <!-- trees -->
+            <rect x="262" y="190" width="6" height="22" fill="#7A4B2A"/><circle cx="265" cy="182" r="15" fill="#2E8B57"/>
+            <rect x="447" y="192" width="6" height="20" fill="#7A4B2A"/><circle cx="450" cy="184" r="14" fill="#2E8B57"/>
+            <rect x="597" y="190" width="6" height="22" fill="#7A4B2A"/><circle cx="600" cy="182" r="15" fill="#2E8B57"/>
+          </g>
+          <rect y="242" width="800" height="28" fill="#5B6672"/><path d="M0 256H800" stroke="#E8E2C9" stroke-width="3" stroke-dasharray="26 18"/>
+          <g id="cracks" fill="none" stroke="#2A2118" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M140 214 L152 232 L142 246 L160 268"/><path d="M430 214 L420 230 L436 246 L424 270"/><path d="M700 214 L712 232 L700 250 L716 272"/></g>
+          <g id="fireFx">
+            <g transform="translate(316 150)"><path class="flame" d="M0 0 C-12 -14 -5 -24 0 -38 C5 -24 14 -17 12 -6 C11 3 -11 5 0 0Z" fill="#FF8A1F"/><path class="flame b" d="M0 0 C-6 -8 -2 -14 0 -22 C3 -14 8 -10 6 -3 C5 2 -6 3 0 0Z" fill="#FFD34D"/></g>
+            <g transform="translate(300 152)"><path class="flame b" d="M0 0 C-9 -10 -4 -18 0 -28 C4 -18 10 -13 9 -5 C8 2 -8 4 0 0Z" fill="#E8441E"/></g>
+            <g transform="translate(404 156)"><path class="flame" d="M0 0 C-12 -14 -5 -24 0 -38 C5 -24 14 -17 12 -6 C11 3 -11 5 0 0Z" fill="#FF8A1F"/><path class="flame b" d="M0 0 C-6 -8 -2 -14 0 -22 C3 -14 8 -10 6 -3 C5 2 -6 3 0 0Z" fill="#FFD34D"/></g>
+            <g transform="translate(600 168)"><path class="flame b" d="M0 0 C-14 -16 -6 -28 0 -44 C6 -28 16 -20 14 -7 C13 3 -13 6 0 0Z" fill="#FF8A1F"/></g>
+            <circle class="smoke" cx="316" cy="104" r="12" fill="#444"/><circle class="smoke" cx="404" cy="112" r="10" fill="#444" style="animation-delay:-1.2s"/><circle class="smoke" cx="600" cy="120" r="12" fill="#444" style="animation-delay:-2s"/>
+          </g>
+          <rect id="dark" width="800" height="280" fill="#13202C"/>
+          <g id="rain" stroke="#D3E8F6" stroke-width="1.6" stroke-linecap="round"><g id="rainLines"></g></g>
+          <g id="flood"><g id="waves"><path id="wavePath" fill="url(#water)" d=""/></g></g>
+        </g>
+      </svg>
+      <div class="alerts" id="alerts" aria-live="polite"></div>
+    </div>
+
+    <div class="panel">
+      <div class="controls">
+        <div class="ctl-row">
+          <button class="btn" id="btnPlay" type="button">Start</button>
+          <div class="seg" role="group" aria-label="Game speed">
+            <button type="button" data-speed="1" aria-pressed="true">1×</button>
+            <button type="button" data-speed="2" aria-pressed="false">2×</button>
+            <button type="button" data-speed="4" aria-pressed="false">4×</button>
+          </div>
+          <span class="note" id="hint">You can spend while paused.</span>
+        </div>
+        <div>
+          <div class="timeline" id="timeline"></div>
+          <div class="tl-labels"><span>Month 1</span><span>Month 2</span><span>Month 3</span><span>Month 4</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="hd"><h2>Hazard chances</h2><small>Rolled at the start of every month</small></div>
+      <div class="risks" id="risks"></div>
+    </div>
+
+    <div class="panel">
+      <div class="hd"><h2>Barangay log</h2><small>Latest first</small></div>
+      <ul class="log" id="log"></ul>
+    </div>
+  </div>
+
+  <div class="col right">
+    <div class="panel" style="padding:14px 14px 12px; display:grid; gap:4px">
+      <h2>Department funds</h2>
+      <div class="note">Funds drain every day. Healthcare, Fire, Law and Education projects are delivered by road, so Roads set how fast they arrive.</div>
+    </div>
+    <div class="depts" id="depts"></div>
+  </div>
+</div>
+
+<div class="modal" id="intro">
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="introTitle">
+    <div class="eyebrow">CivicQuest · Budget sim</div>
+    <h1 id="introTitle">Barangay Budget</h1>
+    <p>You are the Punong Barangay for the next 120 days. Floods, typhoons, fires and earthquakes will test your town. Your treasury is limited, so decide where the money goes.</p>
+    <ul>
+      <li><i></i><span>Every department loses funds each day. Keep the bars from running dry.</span></li>
+      <li><i></i><span>Healthcare cuts deaths during disasters. Fire crews put out fires sooner.</span></li>
+      <li><i></i><span>Law Enforcement raises tax income. Education grows the population.</span></li>
+      <li><i></i><span>Roads decide how fast every other project is delivered.</span></li>
+    </ul>
+    <button class="btn" id="btnBegin" type="button">Start the term</button>
+  </div>
+</div>
+
+<div class="modal" id="end" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="endTitle">
+    <div class="eyebrow" id="endEyebrow">Term over</div>
+    <h1 id="endTitle">Result</h1>
+    <p id="endSub"></p>
+    <div class="result" id="endStats"></div>
+    <p class="lesson" id="endLesson"></p>
+    <button class="btn" id="btnAgain" type="button">Play again</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var $ = function (s) { return document.querySelector(s); };
+  var lerp = function (a, b, t) { return a + (b - a) * t; };
+  var ri = function (a, b) { return a + Math.floor(Math.random() * (b - a + 1)); };
+  var rr = function (x) { var f = Math.floor(x); return f + (Math.random() < x - f ? 1 : 0); };
+  var peso = function (n) { return '₱' + Math.round(n).toLocaleString('en-US'); };
+  var pk = function (n) { return '₱' + (Math.round(n * 10) / 10) + 'k'; };
+
+  var CFG = { days: 120, pop: 3000, cash: 120000, taxPerHead: 1.8, growth: 0.0013, deliver: 5 };
+
+  var ICON = {
+    road: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 5 21M16 3l3 18M12 4v3M12 10.5v3M12 17v3"/></svg>',
+    health: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6z"/></svg>',
+    fire: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 2c1 4 5 6 5 11a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-4-1-6 1-10z"/></svg>',
+    law: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 5-5"/></svg>',
+    edu: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11.5V16c0 1.5 2.7 3 6 3s6-1.5 6-3v-4.5"/></svg>',
+    flood: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg>',
+    typhoon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h11a3 3 0 1 0-3-3M3 12h16a3 3 0 1 1-3 3M3 16h8"/></svg>',
+    quake: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h4l2.5-6 3 12 3-9 1.5 3H22"/></svg>'
+  };
+
+  var HAZ = {
+    flood:   { name: 'Flood',      chance: 0.6, dur: [5, 10], deaths: [10, 15], icon: 'flood' },
+    typhoon: { name: 'Typhoon',    chance: 0.3, dur: [3, 5],  deaths: [15, 20], icon: 'typhoon' },
+    fire:    { name: 'Wildfire',   chance: 0.3, dur: [4, 9],  deaths: [5, 10],  icon: 'fire' },
+    quake:   { name: 'Earthquake', chance: 0.1, dur: [2, 5],  deaths: [15, 20], icon: 'quake' }
+  };
+
+  var DEPT = [
+    { id: 'health', name: 'Healthcare',      sub: 'Fewer deaths, safer disasters', decay: 1.2,
+      lesson: 'Clinics and trained health workers save lives in every disaster.',
+      eff: function (E) { var m = Math.round((E.disMult() - 1) * 100); return Math.round(E.baseDeaths()) + ' deaths a month · ' + (m > 0 ? '+' : m < 0 ? '−' : '') + Math.abs(m) + '% in disasters'; } },
+    { id: 'road',   name: 'Roads',           sub: 'Faster delivery of every project', decay: 0.8,
+      lesson: 'Good roads get aid, engineers and ambulances to people faster.',
+      eff: function (E) { return 'Projects arrive at ' + E.roadSpeed().toFixed(1) + '× speed'; } },
+    { id: 'fire',   name: 'Fire Department', sub: 'Puts out fires sooner', decay: 1.0,
+      lesson: 'Fire crews and trained volunteers stop small fires before they spread.',
+      eff: function (E) { return 'Fires are put out at ' + E.fireSpeed().toFixed(1) + '× speed'; } },
+    { id: 'law',    name: 'Law Enforcement', sub: 'More tax income', decay: 1.0,
+      lesson: 'Peace and order keeps local business open, and taxes keep flowing.',
+      eff: function (E) { return 'Tax income at ' + Math.round(E.taxMult() * 100) + '% of normal'; } },
+    { id: 'edu',    name: 'Education',       sub: 'Faster population growth', decay: 0.8,
+      lesson: 'Schools build skills and opportunity, so families stay and communities grow.',
+      eff: function (E) { return 'Population growth at ' + Math.round(E.growMult() * 100) + '% of normal'; } }
+  ];
+
+  var S = null;
+  var E = {
+    roadSpeed: function () { return lerp(0.5, 1.5, S.lv.road / 100); },
+    baseDeaths: function () { return lerp(50, 10, S.lv.health / 100); },
+    disMult: function () { return lerp(1.2, 0.8, S.lv.health / 100); },
+    fireSpeed: function () { return lerp(0.6, 1.6, S.lv.fire / 100); },
+    taxMult: function () { return lerp(0.6, 1.4, S.lv.law / 100); },
+    growMult: function () { return lerp(0.7, 1.3, S.lv.edu / 100); }
+  };
+
+  /* ---------- state ---------- */
+  function newGame() {
+    S = {
+      day: 0, pop: CFG.pop, cash: CFG.cash, income: CFG.pop * CFG.taxPerHead,
+      lv: { road: 50, health: 50, fire: 50, law: 50, edu: 50 },
+      q: { health: 0, fire: 0, law: 0, edu: 0 },
+      sumLv: { road: 0, health: 0, fire: 0, law: 0, edu: 0 },
+      low: {}, active: [], sched: [], hit: { flood: 0, typhoon: 0, fire: 0, quake: 0 },
+      lost: 0, dBase: 0, dDis: 0, lastDeaths: 0, hist: [CFG.pop], logs: []
+    };
+    var months = CFG.days / 30, m, k, any = false;
+    for (m = 0; m < months; m++) {
+      for (k in HAZ) {
+        if (Math.random() < HAZ[k].chance) {
+          S.sched.push({ type: k, day: m * 30 + (m === 0 ? ri(6, 14) : ri(3, 27)), warned: false });
+          if (m === 0) any = true;
+        }
+      }
+    }
+    if (!any) S.sched.push({ type: 'flood', day: 10, warned: false });
+    log('Term begins. Population ' + CFG.pop.toLocaleString('en-US') + '. Treasury ' + peso(CFG.cash) + '.', 'info', 0);
+  }
+
+  function log(msg, kind, day) {
+    S.logs.unshift({ d: day === undefined ? S.day : day, msg: msg, kind: kind || '' });
+    if (S.logs.length > 60) S.logs.pop();
+  }
+
+  /* ---------- simulation ---------- */
+  function tick() {
+    S.day++;
+    var d = S.day, i, id, h;
+    if (d > 1 && (d - 1) % 30 === 0) log('Month ' + (Math.floor((d - 1) / 30) + 1) + ' begins. Hazards are checked again.', 'info');
+
+    S.sched.forEach(function (ev) {
+      if (!ev.warned && ev.day - d === 2) {
+        ev.warned = true;
+        log('Weather watch: a ' + HAZ[ev.type].name.toLowerCase() + ' is expected within 2 days.', 'warn');
+      }
+    });
+    S.sched.forEach(function (ev) {
+      if (ev.day === d && !S.active.some(function (a) { return a.type === ev.type; })) {
+        var hz = HAZ[ev.type];
+        S.active.push({ type: ev.type, dur: ri(hz.dur[0], hz.dur[1]), done: 0, prog: 0, deaths: 0, today: 0 });
+        S.hit[ev.type]++;
+        log(hz.name + ' strikes the barangay!', 'bad');
+      }
+    });
+
+    var rate = CFG.deliver * E.roadSpeed();
+    ['health', 'fire', 'law', 'edu'].forEach(function (k) {
+      var mv = Math.min(S.q[k], rate);
+      S.q[k] -= mv; S.lv[k] = Math.min(100, S.lv[k] + mv);
+    });
+    DEPT.forEach(function (p) {
+      S.lv[p.id] = Math.max(0, S.lv[p.id] - p.decay);
+      S.sumLv[p.id] += S.lv[p.id];
+      if (S.lv[p.id] < 20 && !S.low[p.id]) { S.low[p.id] = true; log(p.name + ' funds are nearly empty.', 'warn'); }
+      if (S.lv[p.id] >= 30) S.low[p.id] = false;
+    });
+
+    S.income = S.pop * CFG.taxPerHead * E.taxMult();
+    S.cash += S.income;
+
+    var base = rr(E.baseDeaths() / 30), dis = 0, hm = E.disMult(), fs = E.fireSpeed();
+    S.active.forEach(function (a) {
+      var hz = HAZ[a.type];
+      a.today = Math.round(ri(hz.deaths[0], hz.deaths[1]) * hm);
+      a.deaths += a.today; dis += a.today;
+      if (a.type === 'fire') a.prog += fs; else a.done++;
+    });
+    S.active = S.active.filter(function (a) {
+      var over = a.type === 'fire' ? a.prog >= a.dur : a.done >= a.dur;
+      if (over) log(HAZ[a.type].name + ' is over. ' + a.deaths + ' lives lost.', a.deaths > 60 ? 'bad' : 'good');
+      return !over;
+    });
+
+    var dead = Math.min(S.pop, base + dis);
+    var born = rr(S.pop * CFG.growth * E.growMult());
+    S.pop = Math.max(0, S.pop - dead + born);
+    S.lost += dead; S.dBase += base; S.dDis += dis; S.lastDeaths = dead;
+    S.hist.push(S.pop);
+  }
+
+  function fund(id, amt) {
+    var pts = amt / 1000;
+    var room = 100 - S.lv[id] - (id === 'road' ? 0 : S.q[id]);
+    var use = Math.min(pts, room);
+    if (use <= 0 || S.cash < use * 1000) return;
+    S.cash -= use * 1000;
+    if (id === 'road') S.lv.road += use; else S.q[id] += use;
+    render();
+  }
+
+  /* ---------- loop ---------- */
+  var timer = null, running = false, speed = 1, started = false;
+  function loop() {
+    if (!running) return;
+    tick(); render();
+    if (S.day >= CFG.days) { running = false; finish(); return; }
+    timer = setTimeout(loop, 650 / speed);
+  }
+  function setRunning(on) {
+    running = on;
+    clearTimeout(timer);
+    if (on) timer = setTimeout(loop, 300);
+    $('#btnPlay').textContent = on ? 'Pause' : (started ? 'Resume' : 'Start');
+    $('#hint').textContent = on ? 'Spend any time. Funds drain every day.' : 'You can spend while paused.';
+  }
+
+  /* ---------- build UI ---------- */
+  function buildStatic() {
+    var tl = $('#timeline'), i;
+    tl.innerHTML = '';
+    for (i = 0; i < CFG.days / 30; i++) tl.insertAdjacentHTML('beforeend', '<div class="m"><i></i></div>');
+
+    var risks = '';
+    Object.keys(HAZ).forEach(function (k) {
+      var h = HAZ[k];
+      risks += '<div class="risk" data-r="' + k + '" style="--haz:var(--haz-' + k + ')">' +
+        '<div class="t"><span>' + ICON[h.icon] + h.name + '</span><span class="p num">' + Math.round(h.chance * 100) + '%</span></div>' +
+        '<div class="bar"><i style="width:' + h.chance * 100 + '%"></i></div>' +
+        '<div class="d">' + h.dur[0] + '–' + h.dur[1] + ' days · ' + h.deaths[0] + '–' + h.deaths[1] + ' deaths a day</div></div>';
+    });
+    $('#risks').innerHTML = risks;
+
+    var dh = '';
+    DEPT.forEach(function (p) {
+      dh += '<div class="panel dept" data-d="' + p.id + '">' +
+        '<div class="row1"><div class="ico">' + ICON[p.id] + '</div><div class="nm"><b>' + p.name + '</b><small>' + p.sub + '</small></div><span class="tag" data-f="tag"></span></div>' +
+        '<div class="meter" role="img" data-f="meter"><div class="fill" data-f="fill"></div><div class="queue" data-f="queue"></div></div>' +
+        '<div class="nums num"><span data-f="amt"></span><span class="dec">−₱' + p.decay + 'k a day</span><span class="inc" data-f="inc"></span></div>' +
+        '<div class="eff" data-f="eff"></div>' +
+        '<div class="buy"><button class="btn" type="button" data-d="' + p.id + '" data-a="10000">+₱10k</button><button class="btn" type="button" data-d="' + p.id + '" data-a="25000">+₱25k</button></div>' +
+        '</div>';
+    });
+    $('#depts').innerHTML = dh;
+
+    var rain = '', x, y;
+    for (i = 0; i < 90; i++) {
+      x = Math.round(Math.random() * 900); y = Math.round(Math.random() * 420 - 150);
+      rain += '<line x1="' + x + '" y1="' + y + '" x2="' + (x - 9) + '" y2="' + (y + 24) + '"/>';
+    }
+    $('#rainLines').innerHTML = rain;
+    var w = 'M0 178', n;
+    for (n = 0; n < 10; n++) w += ' q25 -9 50 0 t50 0';
+    w += ' V330 H0Z';
+    $('#wavePath').setAttribute('d', w);
+  }
+
+  /* ---------- render ---------- */
+  function render() {
+    var i;
+    $('#sDay').textContent = S.day + ' / ' + CFG.days;
+    $('#sMonth').textContent = 'Month ' + Math.min(4, Math.floor(Math.max(0, S.day - 1) / 30) + 1);
+    $('#sPop').textContent = Math.round(S.pop).toLocaleString('en-US');
+    var diff = S.pop - CFG.pop, pd = $('#sPopD');
+    pd.textContent = S.day === 0 ? 'starting size' : (diff >= 0 ? '+' : '−') + Math.abs(Math.round(diff)).toLocaleString('en-US') + ' so far';
+    pd.className = 's num' + (S.day === 0 ? '' : diff >= 0 ? ' up' : ' dn');
+    $('#sCash').textContent = peso(S.cash);
+    $('#sInc').textContent = '+' + peso(S.income) + '/day';
+    $('#sLost').textContent = Math.round(S.lost).toLocaleString('en-US');
+    $('#sLostD').textContent = S.day === 0 ? 'no deaths yet' : S.lastDeaths + ' today';
+
+    var mn = Math.min.apply(null, S.hist), mx = Math.max.apply(null, S.hist), span = Math.max(1, mx - mn), pts = [];
+    for (i = 0; i < S.hist.length; i++) pts.push((S.hist.length < 2 ? 0 : i / (S.hist.length - 1) * 100).toFixed(1) + ',' + (13 - (S.hist[i] - mn) / span * 12).toFixed(1));
+    $('#sparkLine').setAttribute('points', pts.length < 2 ? '0,7 100,7' : pts.join(' '));
+
+    var tlm = document.querySelectorAll('#timeline .m i');
+    for (i = 0; i < tlm.length; i++) tlm[i].style.width = Math.max(0, Math.min(1, (S.day - i * 30) / 30)) * 100 + '%';
+
+    DEPT.forEach(function (p) {
+      var el = document.querySelector('.dept[data-d="' + p.id + '"]');
+      var lv = S.lv[p.id], q = p.id === 'road' ? 0 : S.q[p.id];
+      var c = lv < 20 ? 'var(--bad)' : lv < 45 ? 'var(--warn)' : lv < 75 ? 'var(--info)' : 'var(--good)';
+      var tag = lv < 20 ? ['Critical', 'crit'] : lv < 45 ? ['Low', 'low'] : lv < 75 ? ['Stable', 'ok'] : ['Strong', 'strong'];
+      var meter = el.querySelector('[data-f="meter"]');
+      meter.style.setProperty('--c', c);
+      meter.setAttribute('aria-label', p.name + ' funds ' + Math.round(lv) + ' of 100 thousand pesos');
+      el.querySelector('[data-f="fill"]').style.width = lv + '%';
+      var qe = el.querySelector('[data-f="queue"]');
+      qe.style.left = lv + '%'; qe.style.width = Math.min(q, 100 - lv) + '%';
+      var t = el.querySelector('[data-f="tag"]'); t.textContent = tag[0]; t.className = 'tag ' + tag[1];
+      el.querySelector('[data-f="amt"]').textContent = '₱' + Math.round(lv) + 'k / ₱100k';
+      el.querySelector('[data-f="inc"]').textContent = q > 0.05 ? '+' + pk(q) + ' on the way' : '';
+      el.querySelector('[data-f="eff"]').textContent = p.eff(E);
+      var room = 100 - lv - q;
+      var btns = el.querySelectorAll('.buy .btn');
+      for (i = 0; i < btns.length; i++) {
+        var a = Number(btns[i].getAttribute('data-a')), cost = Math.min(a, room * 1000);
+        btns[i].disabled = room <= 0.05 || S.cash < cost;
+      }
+    });
+
+    var ah = '';
+    S.active.forEach(function (a) {
+      var left = a.type === 'fire' ? Math.max(1, Math.ceil((a.dur - a.prog) / E.fireSpeed())) : a.dur - a.done;
+      ah += '<span class="chip" style="--haz:var(--haz-' + a.type + ')">' + ICON[HAZ[a.type].icon] + HAZ[a.type].name +
+        ' <small class="num">' + (a.type === 'fire' ? '~' : '') + left + 'd left · −' + a.today + ' today</small></span>';
+    });
+    S.sched.forEach(function (ev) {
+      if (ev.warned && ev.day > S.day) ah += '<span class="chip watch">' + ICON[HAZ[ev.type].icon] + 'Watch: ' + HAZ[ev.type].name + ' soon</span>';
+    });
+    $('#alerts').innerHTML = ah || '<span class="calm">All calm for now. Funds are draining, so check the bars.</span>';
+
+    var sc = $('#scene');
+    Object.keys(HAZ).forEach(function (k) {
+      sc.classList.toggle('on-' + k, S.active.some(function (a) { return a.type === k; }));
+    });
+    var risks = document.querySelectorAll('.risk');
+    for (i = 0; i < risks.length; i++) risks[i].classList.toggle('on', S.active.some(function (a) { return a.type === risks[i].getAttribute('data-r'); }));
+
+    $('#log').innerHTML = S.logs.map(function (l) {
+      return '<li class="' + l.kind + '"><b>Day ' + l.d + '</b><span>' + l.msg + '</span></li>';
+    }).join('');
+  }
+
+  /* ---------- ending ---------- */
+  function finish() {
+    var ch = (S.pop - CFG.pop) / CFG.pop, g, sub;
+    if (ch >= 0.10) { g = 'Outstanding Kapitan'; sub = 'Your barangay grew and stayed safe through the hardest days.'; }
+    else if (ch >= 0.02) { g = 'Steady Kapitan'; sub = 'You kept the town growing despite the disasters.'; }
+    else if (ch >= -0.04) { g = 'Barely Holding On'; sub = 'The population stayed about the same. Better preparation could tip it.'; }
+    else { g = 'Barangay in Crisis'; sub = 'Too many people were lost. Next time, fund healthcare before the storm hits.'; }
+
+    var weakest = DEPT[0], best = DEPT[0];
+    DEPT.forEach(function (p) {
+      if (S.sumLv[p.id] < S.sumLv[weakest.id]) weakest = p;
+      if (S.sumLv[p.id] > S.sumLv[best.id]) best = p;
+    });
+    var bestPop = S.pop;
+    try { var prev = Number(localStorage.getItem('bb-best-pop')); if (prev > bestPop) bestPop = prev; else localStorage.setItem('bb-best-pop', String(Math.round(S.pop))); } catch (e) {}
+
+    var hits = Object.keys(HAZ).map(function (k) { return S.hit[k] + ' ' + HAZ[k].name.toLowerCase() + (S.hit[k] === 1 ? '' : 's'); }).join(', ');
+    $('#endTitle').textContent = g;
+    $('#endSub').textContent = sub;
+    $('#endStats').innerHTML =
+      '<div><div class="k">Final population</div><div class="v num">' + Math.round(S.pop).toLocaleString('en-US') + '</div></div>' +
+      '<div><div class="k">Change</div><div class="v num">' + (ch >= 0 ? '+' : '−') + Math.abs(ch * 100).toFixed(1) + '%</div></div>' +
+      '<div><div class="k">Lost in disasters</div><div class="v num">' + Math.round(S.dDis).toLocaleString('en-US') + '</div></div>' +
+      '<div><div class="k">Treasury left</div><div class="v num">' + peso(S.cash) + '</div></div>' +
+      '<div style="grid-column:1/-1"><div class="k">What hit you</div><div style="font-weight:700">' + hits + '</div></div>' +
+      '<div style="grid-column:1/-1"><div class="k">Best score on this device</div><div style="font-weight:700">' + Math.round(bestPop).toLocaleString('en-US') + ' people</div></div>';
+    $('#endLesson').textContent = 'You funded ' + best.name + ' the most and ' + weakest.name + ' the least. ' + weakest.lesson + ' Real barangays are required to post their budgets publicly, so you can ask to see how yours is spent.';
+    $('#end').hidden = false;
+    $('#btnAgain').focus();
+  }
+
+  /* ---------- events ---------- */
+  $('#depts').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-d]');
+    if (b) fund(b.getAttribute('data-d'), Number(b.getAttribute('data-a')));
+  });
+  $('#btnPlay').addEventListener('click', function () {
+    if (S.day >= CFG.days) return;
+    if (!started) { started = true; }
+    setRunning(!running);
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-speed]'), function (b) {
+    b.addEventListener('click', function () {
+      speed = Number(b.getAttribute('data-speed'));
+      Array.prototype.forEach.call(document.querySelectorAll('[data-speed]'), function (o) { o.setAttribute('aria-pressed', o === b ? 'true' : 'false'); });
+    });
+  });
+  $('#btnBegin').addEventListener('click', function () {
+    $('#intro').hidden = true; started = true; setRunning(true);
+  });
+  $('#btnAgain').addEventListener('click', function () {
+    $('#end').hidden = true; started = true; newGame(); render(); setRunning(true);
+  });
+
+  buildStatic(); newGame(); render();
+  $('#btnBegin').focus();
+})();
+</script>
